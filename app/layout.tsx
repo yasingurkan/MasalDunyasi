@@ -88,8 +88,7 @@ export const metadata: Metadata = {
     languages: { "tr-TR": siteUrl },
   },
   verification: {
-    // Google Search Console doğrulama kodu buraya gelecek
-    // google: "XXXXXXXXXXXXXXXXX",
+    google: "cmSuFSZN-HQX_2EVsdl0YjdwTG7t86cl0NJr6qCv66U",
   },
   other: {
     "google-adsense-account": "ca-pub-4914619084035487",

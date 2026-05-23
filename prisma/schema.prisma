@@ -1,0 +1,50 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AgeCategory {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique
+  name        String
+  label       String
+  ageMin      Int
+  ageMax      Int
+  description String
+  icon        String
+  color       String
+  stories     Story[]
+  createdAt   DateTime @default(now())
+}
+
+model Story {
+  id             Int         @id @default(autoincrement())
+  slug           String      @unique
+  title          String
+  content        String      @db.Text
+  excerpt        String
+  ageMin         Int
+  ageMax         Int
+  readingMinutes Int
+  wordCount      Int
+  source         String
+  characters     String[]
+  tags           String[]
+  imageQuery     String
+  imageUrl       String?
+  category       AgeCategory @relation(fields: [categoryId], references: [id])
+  categoryId     Int
+  sourceType     String      @default("generated")
+  featured       Boolean     @default(false)
+  viewCount      Int         @default(0)
+  uploadedAt     DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([categoryId, uploadedAt])
+  @@index([slug])
+}

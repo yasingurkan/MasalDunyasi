@@ -1,26 +1,203 @@
 @import "tailwindcss";
 
+@theme {
+  --color-night: #0F0A1E;
+  --color-night-soft: #1A1035;
+  --color-night-card: #231545;
+  --color-purple: #6B21A8;
+  --color-purple-light: #9333EA;
+  --color-purple-dark: #4C1D95;
+  --color-gold: #F59E0B;
+  --color-gold-light: #FCD34D;
+  --color-gold-dark: #D97706;
+  --color-star: #FEF9C3;
+  --color-read: #22C55E;
+  --color-read-bg: #14532D;
+
+  --font-nunito: "Nunito", sans-serif;
+  --font-display: "Fredoka One", cursive;
+
+  --radius-card: 1rem;
+  --radius-badge: 9999px;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0F0A1E;
+  --foreground: #F3F0FF;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Nunito", sans-serif;
+  min-height: 100dvh;
+}
+
+/* ── Yıldız titreşimi ────────────────────────────────────────────────────── */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1.2); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+/* Yıldız drift hareketi */
+@keyframes drift {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(var(--dx, 8px), var(--dy, 6px)); }
+  50%  { transform: translate(calc(var(--dx, 8px) * -0.6), calc(var(--dy, 6px) * 1.4)); }
+  75%  { transform: translate(calc(var(--dx, 8px) * 1.2), calc(var(--dy, 6px) * -0.7)); }
+  100% { transform: translate(0, 0); }
+}
+
+.star {
+  animation: twinkle var(--duration, 3s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+.float-anim {
+  animation: float 4s ease-in-out infinite;
+}
+
+.star-drift {
+  animation: drift var(--drift-dur, 22s) ease-in-out infinite;
+  animation-delay: var(--drift-delay, 0s);
+}
+
+/* ── Gezegen yörüngeleri ─────────────────────────────────────────────────── */
+/* Her gezegen kendi merkez noktasına göre eliptik yörüngede döner */
+
+@keyframes orbit-p1 {
+  0%   { transform: translate( 22vw,    0   ); }
+  25%  { transform: translate(   0,   9vh  ); }
+  50%  { transform: translate(-22vw,    0   ); }
+  75%  { transform: translate(   0,  -9vh  ); }
+  100% { transform: translate( 22vw,    0   ); }
+}
+
+@keyframes orbit-p2 {
+  0%   { transform: translate(-16vw,    0   ); }
+  25%  { transform: translate(   0,  -8vh  ); }
+  50%  { transform: translate( 16vw,    0   ); }
+  75%  { transform: translate(   0,   8vh  ); }
+  100% { transform: translate(-16vw,    0   ); }
+}
+
+@keyframes orbit-p3 {
+  0%   { transform: translate(   0,  -6vh  ); }
+  25%  { transform: translate( 10vw,    0   ); }
+  50%  { transform: translate(   0,   6vh  ); }
+  75%  { transform: translate(-10vw,    0   ); }
+  100% { transform: translate(   0,  -6vh  ); }
+}
+
+@keyframes orbit-p4 {
+  0%   { transform: translate( 13vw,    0   ); }
+  25%  { transform: translate(   0,  -5vh  ); }
+  50%  { transform: translate(-13vw,    0   ); }
+  75%  { transform: translate(   0,   5vh  ); }
+  100% { transform: translate( 13vw,    0   ); }
+}
+
+@keyframes orbit-p5 {
+  0%   { transform: translate(  -7vw,    0   ); }
+  25%  { transform: translate(   0,    4vh  ); }
+  50%  { transform: translate(   7vw,    0   ); }
+  75%  { transform: translate(   0,   -4vh  ); }
+  100% { transform: translate(  -7vw,    0   ); }
+}
+
+/* ── Shimmer (hero başlık) ───────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #F59E0B 0%,
+    #FCD34D 25%,
+    #F59E0B 50%,
+    #FCD34D 75%,
+    #F59E0B 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ── Logo renk döngüsü ───────────────────────────────────────────────────── */
+/* background-clip:text sticky+backdrop-filter içinde bozuluyor;
+   color animasyonu her ortamda güvenilir çalışır.               */
+@keyframes logo-colors {
+  0%   { color: #F59E0B; }
+  16%  { color: #f97316; }
+  33%  { color: #ec4899; }
+  50%  { color: #8b5cf6; }
+  66%  { color: #06b6d4; }
+  83%  { color: #10b981; }
+  100% { color: #F59E0B; }
+}
+
+.logo-text {
+  font-family: var(--font-display);
+  animation: logo-colors 6s linear infinite;
+}
+
+/* ── Kıvılcım ────────────────────────────────────────────────────────────── */
+@keyframes sparkle-pop {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.7; }
+  50%       { transform: scale(1.5) rotate(15deg); opacity: 1; }
+}
+
+.sparkle-anim {
+  display: inline-block;
+  animation: sparkle-pop var(--duration, 2s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+  color: #FCD34D;
+}
+
+/* ── Cümle vurgulama ─────────────────────────────────────────────────────── */
+.sentence-current {
+  background-color: rgba(245, 158, 11, 0.25);
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: background-color 0.3s ease;
+}
+
+.sentence-done {
+  color: #86EFAC;
+  transition: color 0.3s ease;
+}
+
+/* ── Kart hover ──────────────────────────────────────────────────────────── */
+.story-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.story-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(107, 33, 168, 0.4);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1A1035; }
+::-webkit-scrollbar-thumb { background: #6B21A8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9333EA; }
+
+/* ── Hareketi azalt ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .star, .star-drift, .float-anim, .shimmer-text,
+  .logo-text, .sparkle-anim { animation: none; }
+  .logo-text  { color: #F59E0B; }
 }

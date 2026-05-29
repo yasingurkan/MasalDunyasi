@@ -19,6 +19,7 @@ const fredoka = Fredoka({
 });
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://masaldunyasi.com").replace(/\/$/, "");
+const adsensePubId = process.env.NEXT_PUBLIC_ADSENSE_PUB_ID;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -90,9 +91,11 @@ export const metadata: Metadata = {
   verification: {
     google: "cmSuFSZN-HQX_2EVsdl0YjdwTG7t86cl0NJr6qCv66U",
   },
-  other: {
-    "google-adsense-account": "ca-pub-4914619084035487",
-  },
+  other: adsensePubId
+    ? {
+        "google-adsense-account": adsensePubId,
+      }
+    : {},
 };
 
 export default function RootLayout({
@@ -104,12 +107,14 @@ export default function RootLayout({
     <html lang="tr" className={`${nunito.variable} ${fredoka.variable} h-full`}>
       <head>
         {/* Google AdSense */}
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4914619084035487"
-          crossOrigin="anonymous"
-          strategy="lazyOnload"
-        />
+        {adsensePubId && (
+          <Script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsensePubId}`}
+            crossOrigin="anonymous"
+            strategy="lazyOnload"
+          />
+        )}
       </head>
       <body className="min-h-full flex flex-col antialiased">
         {children}

@@ -75,15 +75,19 @@ function buildPrompt(story: {
   else if (/kırgız|kyrgyz/.test(src))
     context = "Central Asian epic hero Manas, mountain steppe, nomadic warriors on horseback";
   else if (/türk|halk|çocuk|özgün|destan|efsane/.test(src))
-    context = "Turkish folk tale, colorful Anatolian village, traditional carpet patterns, bazaar";
+    // Atmosfer ipucu — sahneyi köy/pazar sahnesine ZORLAMADAN sıcak Türk masalı havası
+    context = "warm Turkish folk-tale atmosphere, Anatolian storybook mood";
   else
-    context = "magical fairy tale world, enchanted landscape, colorful fantasy adventure";
+    context = "warm magical fairy-tale atmosphere";
 
-  // Evrensel çizgi karakter stili
+  // Sahneyi ana özne yap: imageQuery'yi öne ve vurgulu koy ki görsel metne uysun
   const style =
-    "children's book cartoon illustration, vibrant saturated colors, cute expressive characters, flat digital art, storybook art style, no text, no watermark, family friendly";
+    "professional children's picture book illustration, soft warm cinematic lighting, " +
+    "cute expressive characters, rich painterly detail, vibrant colors, " +
+    "whimsical storybook art, no text, no watermark, family friendly";
 
-  return [scene, chars, context, style].filter(Boolean).join(", ");
+  // Sahne en başta + tekrar bağlamla pekiştirilir; kültür yalnızca atmosfer olarak eklenir
+  return [`${scene}, as the main scene`, chars, context, style].filter(Boolean).join(", ");
 }
 
 // ── Pollinations URL üretici ──────────────────────────────────────────────────

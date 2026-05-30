@@ -17,9 +17,11 @@
     "db:bulk": "ts-node --project tsconfig.seed.json prisma/seed/add-bulk-stories.ts",
     "stories:generate": "ts-node --project tsconfig.seed.json scripts/generate-stories-groq.ts",
     "stories:fix-lang": "ts-node --project tsconfig.seed.json scripts/fix-foreign-lang.ts",
-    "stories:replace-foreign": "ts-node --project tsconfig.seed.json scripts/replace-foreign-words.ts"
+    "stories:replace-foreign": "ts-node --project tsconfig.seed.json scripts/replace-foreign-words.ts",
+    "stories:rewrite": "ts-node --project tsconfig.seed.json scripts/rewrite-all-stories.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
     "@prisma/client": "^5.22.0",
     "framer-motion": "^11.18.2",
     "msedge-tts": "^2.0.5",

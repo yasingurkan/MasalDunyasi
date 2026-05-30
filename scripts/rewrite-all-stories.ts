@@ -76,7 +76,11 @@ YAZIM KURALLARI (HEPSİNE KESİNLİKLE UY):
 - Karakterlerin adlarını ve kimliğini KORU; verilen başlığa ve karakterlere sadık kal.
 - Klişe ve dolgu cümlelerden kaçın ("ve böylece herkes mutlu oldu" gibi kolaycılıktan uzak dur).
 - Ders/mesaj didaktik olmasın; hikâyenin içinden doğal çıksın.
-- Sadece masalın METNİNİ yaz. Başlık, "Masal:" öneki, açıklama, emoji veya not EKLEME.`;
+- Önce SADECE masalın metnini yaz. Başlık, "Masal:" öneki, açıklama, emoji veya not EKLEME.
+- Masal bittikten sonra, en sona, AYRI bir satıra tam olarak şu formatta TEK bir satır ekle:
+  [GÖRSEL] <masalın en çarpıcı anını anlatan İngilizce görsel sahnesi: ana karakterler + mekân + eylem + ruh hali, 6-14 kelime>
+  Örnek: [GÖRSEL] little girl peeking into a glowing magic mirror in grandfather's cozy candlelit room, wonder
+  Bu [GÖRSEL] satırı dışında masal metnine HİÇBİR ek şey karıştırma.`;
 
 interface Src {
   id: number;
@@ -89,6 +93,22 @@ interface Src {
 
 function calcWordCount(t: string)      { return t.trim().split(/\s+/).length; }
 function calcReadingMinutes(t: string) { return Math.max(1, Math.ceil(calcWordCount(t) / 100)); }
+
+// Modelin sona eklediği [GÖRSEL] satırını metinden ayırır.
+// Marker yoksa eski davranış: tüm metin içerik, sahne null (imageQuery'ye dokunulmaz).
+function splitContentAndScene(raw: string): { content: string; scene: string | null } {
+  const idx = raw.search(/\[\s*G[ÖO]RSEL\s*\]/i);
+  if (idx === -1) return { content: raw.trim(), scene: null };
+  const content = raw.slice(0, idx).trim();
+  const sceneLine = raw
+    .slice(idx)
+    .replace(/\[\s*G[ÖO]RSEL\s*\]\s*:?\s*/i, "")
+    .split(/\r?\n/)[0]
+    .trim();
+  // Sahne çok kısa/boşsa güvenli tarafta kal: imageQuery'ye dokunma
+  const scene = sceneLine.length >= 8 ? sceneLine : null;
+  return { content: content || raw.trim(), scene };
+}
 
 function getExcerpt(c: string): string {
   const sentences = c.split(/(?<=[.!?])\s+/);
@@ -257,9 +277,11 @@ async function runSample() {
     const { prompt, maxTokens } = buildPrompt(s);
     console.log(`\n\n📖 [${s.ageMin}-${s.ageMax} yaş] ${s.title}\n${"-".repeat(70)}`);
     try {
-      const text = await generate(prompt, maxTokens);
+      const raw = await generate(prompt, maxTokens + 60);
+      const { content: text, scene } = splitContentAndScene(raw);
       console.log(text);
       console.log(`\n   → ${calcWordCount(text)} kelime, ~${calcReadingMinutes(text)} dk`);
+      console.log(`   🎨 Görsel sahnesi: ${scene ?? "(üretilmedi)"}`);
     } catch (err) {
       console.error(`   ✗ Hata: ${err}`);
     }
@@ -298,7 +320,8 @@ async function runDb() {
       const { prompt, maxTokens } = buildPrompt(src);
 
       try {
-        const newContent = await generate(prompt, maxTokens);
+        const raw = await generate(prompt, maxTokens + 60);   // +60: sondaki [GÖRSEL] satırına yer bırak
+        const { content: newContent, scene } = splitContentAndScene(raw);
         await prisma.story.update({
           where: { id: st.id },
           data: {
@@ -306,6 +329,9 @@ async function runDb() {
             excerpt:        getExcerpt(newContent),
             wordCount:      calcWordCount(newContent),
             readingMinutes: calcReadingMinutes(newContent),
+            // İçeriğe uygun sahne üretildiyse imageQuery'yi tazele; üretilmediyse eskisi kalsın.
+            // URL'ler ayrıca `npm run images:update` ile bu imageQuery'den (ücretsiz) yeniden kurulur.
+            ...(scene ? { imageQuery: scene } : {}),
           },
         });
         done++;

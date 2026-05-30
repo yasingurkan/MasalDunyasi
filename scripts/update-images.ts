@@ -81,10 +81,11 @@ function buildPrompt(story: {
     context = "warm magical fairy-tale atmosphere";
 
   // Sahneyi ana özne yap: imageQuery'yi öne ve vurgulu koy ki görsel metne uysun
+  // Net çizgi-film / animasyon filmi stili (kullanıcı isteği)
   const style =
-    "professional children's picture book illustration, soft warm cinematic lighting, " +
-    "cute expressive characters, rich painterly detail, vibrant colors, " +
-    "whimsical storybook art, no text, no watermark, family friendly";
+    "fun 2D cartoon illustration, animated movie style, Pixar Disney inspired, " +
+    "bold clean outlines, bright cheerful saturated colors, cute expressive cartoon characters, " +
+    "smooth cel shading, playful children's storybook art, no text, no watermark, family friendly";
 
   // Sahne en başta + tekrar bağlamla pekiştirilir; kültür yalnızca atmosfer olarak eklenir
   return [`${scene}, as the main scene`, chars, context, style].filter(Boolean).join(", ");

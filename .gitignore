@@ -42,5 +42,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Masal rewrite ilerleme dosyası
+# Masal rewrite ilerleme dosyası ve çalışma logları
 .rewrite-progress.json
+.rewrite-progress-*.json
+rewrite-*.log

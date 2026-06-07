@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Docker (Dockerfile runner aşaması) .next/standalone bekler.
+  output: "standalone",
   images: {
     remotePatterns: [
       {

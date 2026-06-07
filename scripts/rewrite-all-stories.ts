@@ -39,8 +39,11 @@ const GROQ_MODEL   = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL        = PROVIDER === "groq" ? GROQ_MODEL : GEMINI_MODELS[0];
 
-// İlerleme dosyası — START_OFFSET verilmezse buradan otomatik devam
-const PROGRESS_FILE = path.join(__dirname, "../.rewrite-progress.json");
+// İlerleme dosyası — START_OFFSET verilmezse buradan otomatik devam.
+// PROGRESS_FILE env ile override edilebilir → paralel kollar ayrı dosya kullanır, birbirini ezmez.
+const PROGRESS_FILE = process.env.PROGRESS_FILE
+  ? path.resolve(process.env.PROGRESS_FILE)
+  : path.join(__dirname, "../.rewrite-progress.json");
 function readProgress(): number {
   try { return JSON.parse(fs.readFileSync(PROGRESS_FILE, "utf8")).offset || 0; } catch { return 0; }
 }
@@ -65,6 +68,8 @@ const START_OFFSET = process.env.START_OFFSET != null
   : readProgress();
 const SAMPLE_MODE  = process.env.SAMPLE === "1";
 const ONLY_GEN     = process.env.ONLY_GENERATED === "1";
+// LIMIT — bu turda en fazla kaç masal işlenecek (paralel kolları çakışmayan aralıklara bölmek için)
+const LIMIT        = process.env.LIMIT != null ? parseInt(process.env.LIMIT, 10) : undefined;
 
 const SYSTEM_PROMPT = `Sen usta bir Türk çocuk masalı yazarısın. Türk halk masallarının sıcak, akıcı anlatım geleneğini bilirsin.
 
@@ -302,6 +307,7 @@ async function runDb() {
       },
       orderBy: { id: "asc" },
       skip: START_OFFSET,
+      ...(LIMIT != null ? { take: LIMIT } : {}),
     });
 
     console.log(`\n✍️  ${stories.length} masal yeniden yazılacak — model: ${MODEL}, offset: ${START_OFFSET}`);

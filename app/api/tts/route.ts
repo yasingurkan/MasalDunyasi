@@ -6,10 +6,14 @@ import { mkdir, readFile, rm } from "fs/promises";
 
 export const runtime = "nodejs";
 
-// tr-TR-EmelNeural — sakin, soft tonlama
-const VOICE   = "tr-TR-EmelNeural";
-// rate="-12%" → yavaş ve sakin okuma  |  pitch="-4%" → daha sıcak, soft ton
-const PROSODY = Object.assign(new ProsodyOptions(), { rate: "-12%", pitch: "-4%" });
+// tr-TR-EmelNeural — sakin, soft, masal anlatımına uygun kadın ses.
+const VOICE = "tr-TR-EmelNeural";
+// rate -10%: sakin, masalsı tempo  |  pitch -4%: sıcak, yumuşak ton.
+// NOT: Edge'in ücretsiz TTS uç noktası prosody (rate/pitch/volume) dışındaki
+// SSML elementlerini (<break>, <emphasis>, mstts:express-as) reddediyor —
+// audio hiç dönmüyor. Bu yüzden duraklama/ritim TARAFINDA değil,
+// istemci tarafında (lib/speech.ts) segment arası gerçek bekleme ile sağlanır.
+const PROSODY = Object.assign(new ProsodyOptions(), { rate: "-10%", pitch: "-4%" });
 
 export async function GET(req: NextRequest) {
   const text = req.nextUrl.searchParams.get("text")?.trim();
@@ -25,10 +29,9 @@ export async function GET(req: NextRequest) {
 
     const tts = new MsEdgeTTS();
     await tts.setMetadata(VOICE, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
-    // Prosody toFile üçüncü parametresine — kütüphane SSML'e enjekte eder
-    await tts.toFile(tmpDir, text, PROSODY);
+    const { audioFilePath } = await tts.toFile(tmpDir, text, PROSODY);
 
-    const audioBuffer = await readFile(join(tmpDir, "audio.mp3"));
+    const audioBuffer = await readFile(audioFilePath);
 
     return new Response(audioBuffer, {
       status: 200,

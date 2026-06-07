@@ -22,7 +22,17 @@ npm run db:studio     # Prisma Studio'yu aç
 # Docker (tam yığın)
 docker compose up -d  # Postgres + uygulamayı başlat (üretim imajı)
 docker compose down   # Container'ları durdur
+
+# İçerik üretimi / bakım scriptleri (scripts/ — hepsi ts-node --project tsconfig.seed.json ile çalışır)
+npm run stories:rewrite          # DB'deki masalları LLM ile (Gemini varsayılan, PROVIDER=groq) yeniden yazar
+npm run stories:generate         # Groq (Llama 3.3 70B) ile yeni masal üretir
+npm run stories:fix-lang         # Yabancı dildeki masalları düzeltir
+npm run stories:replace-foreign  # Metindeki yabancı kelimeleri Türkçeleştirir
+npm run images:update            # Tüm masallara Pollinations.ai görsel URL'si atar (-- --warm ile ön yükler)
+npm run db:bulk                  # Toplu masal ekleme (prisma/seed/add-bulk-stories.ts)
 ```
+
+Test framework yoktur; `playwright` yüklüdür ancak yapılandırılmış bir test paketi yoktur.
 
 ### Yerel geliştirme kurulumu
 
@@ -48,6 +58,7 @@ docker compose down   # Container'ları durdur
 | `/iletisim` | `app/iletisim/page.tsx` | İletişim formu |
 | `/kvkk` | `app/kvkk/page.tsx` | KVKK sayfası |
 | `/gizlilik-politikasi` | `app/gizlilik-politikasi/page.tsx` | Gizlilik politikası |
+| `/api/tts` | `app/api/tts/route.ts` | Edge TTS ses üretimi (GET, `?text=`); MP3 döner — sesli okumanın backend'i |
 
 Tüm sayfalar **async Server Component**'tır. Next.js 16'da `params` ve `searchParams` birer **Promise**'dir — her zaman `await` edilmeli.
 
@@ -81,7 +92,9 @@ Sayfalama sayfa başına 24 masaldır (`PER_PAGE = 24`, `lib/stories.ts`). `Stor
 
 ### Görseller
 
-Masalın `imageUrl` alanı dolu ise öncelikli kullanılır; boşsa `lib/utils.ts:getImageUrl(imageQuery)` ile `picsum.photos` placeholder URL'si üretilir. `next.config.ts` hem `picsum.photos` hem Unsplash hostname'lerini izin listesine almıştır.
+Masalın `imageUrl` alanı dolu ise öncelikli kullanılır; boşsa `lib/utils.ts:getImageUrl(imageQuery)` ile `picsum.photos` placeholder URL'si üretilir. `imageUrl` alanı `npm run images:update` (`scripts/update-images.ts`) ile `image.pollinations.ai` (flux modeli, 1024×640) URL'leri üretilerek doldurulur; prompt, masalın `imageQuery` + `characters` + `source` alanlarından çizgi-film stilinde kurgulanır.
+
+Görseller `next/image` ile değil, `components/story/StoryIllustration.tsx` içinde CSS `background-image: url(...)` ile çizilir — bu yüzden `next.config.ts` `remotePatterns` (yalnızca `picsum.photos` + Unsplash) görsel host'larını kısıtlamaz; Pollinations URL'leri optimizasyona girmeden doğrudan yüklenir.
 
 ### Client component adaları
 
@@ -89,7 +102,7 @@ Masalın `imageUrl` alanı dolu ise öncelikli kullanılır; boşsa `lib/utils.t
 
 - `components/layout/Header.tsx` — yapışkan navigasyon; arama formu, dropdown ve mobil çekmece state yönetimi
 - `components/story/StoryReader.tsx` — masal içeriğini ve `AudioPlayer`'ı sarar; `currentSentenceIndex` state'ini ikisi arasında taşır
-- `components/story/AudioPlayer.tsx` + `lib/speech.ts` — Web Speech API (`speechSynthesis`), Türkçe ses (`tr-TR`), cümle cümle oynatma ve vurgulama callback'leri
+- `components/story/AudioPlayer.tsx` + `lib/speech.ts` — sunucu taraflı **Edge TTS** ile sesli okuma. `lib/speech.ts:createSpeechController` metni paragraflara böler, her paragrafı `/api/tts?text=...` adresine gönderip dönen MP3'ü `HTMLAudioElement` ile çalar; sonraki paragrafı arka planda prefetch eder. Cümle vurgulaması, ses süresi paragraf cümle sayısına bölünerek `setTimeout`'larla zamanlanır (gerçek kelime sınırı yoktur — yaklaşık). `app/api/tts/route.ts`, `msedge-tts` ile `tr-TR-EmelNeural` sesini (`rate -12%`, `pitch -4%`) `runtime = "nodejs"` altında üretir; geçici dosya `os.tmpdir()`'a yazılıp okunduktan sonra silinir, yanıt 1 gün cache'lenir
 - `components/story/HighlightedText.tsx` — cümleleri `<span>` olarak render eder; aktif cümleye `sentence-current`, okunmuşlara `sentence-done` CSS sınıfı uygular; aktif cümleyi `scrollIntoView` ile görünüme getirir
 - `components/cookie/CookieConsent.tsx` — KVKK çerez onay banner'ı (localStorage)
 - `components/ui/SortingBar.tsx` — sıralama kontrolü (URL search param yönetimi)
@@ -139,6 +152,10 @@ Token'lara `style={}` prop'larında `var(--color-night)` ya da className'de `tex
 |---|---|
 | `DATABASE_URL` | PostgreSQL bağlantı dizesi (zorunlu) |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL; sitemap ve robots.txt'te kullanılır (ör. `https://masaldunyasi.com`) |
+| `GEMINI_API_KEY` | `stories:rewrite` için (Gemini varsayılan sağlayıcı); `.env`'den okunur |
+| `GROQ_API_KEY` | `stories:generate` ve `PROVIDER=groq stories:rewrite` için |
+
+Not: içerik scriptleri API anahtarını hem `process.env`'den hem de doğrudan `.env` dosyasını regex'le okuyarak alır.
 
 ### Dağıtım
 
@@ -147,4 +164,5 @@ Token'lara `style={}` prop'larında `var(--color-night)` ya da className'de `tex
 ### Notlar
 
 - `@/` import alias'ı proje köküne işaret eder (ör. `@/lib/stories`).
-- `framer-motion` `package.json`'a eklenmiş ancak henüz kullanılmıyor.
+- `framer-motion` ve `playwright` `package.json`'a eklenmiş ancak kod içinde kullanılmıyor (playwright için yapılandırılmış test paketi yok).
+- `scripts/rewrite-all-stories.ts` ilerlemeyi `.rewrite-progress.json`'a yazar; `START_OFFSET` verilmezse buradan otomatik devam eder. Gemini günlük kotası dolunca `gemini-2.5-flash → gemini-2.5-flash-lite` modeline geçer.

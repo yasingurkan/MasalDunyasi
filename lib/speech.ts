@@ -50,6 +50,14 @@ function buildParagraphs(text: string): Paragraph[] {
 
 // ── Ses yükleyici ─────────────────────────────────────────────────────────────
 
+// Paragraflar arası "nefes" — masalsı, sakin ritim (Edge SSML <break> desteklemediği
+// için duraklamayı istemci tarafında gerçek bekleme ile veriyoruz).
+const PARAGRAPH_BREATH_MS = 650;
+
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
+}
+
 function buildUrl(paragraphText: string): string {
   return `/api/tts?text=${encodeURIComponent(paragraphText)}`;
 }
@@ -155,6 +163,9 @@ export function createSpeechController(
       audio.onerror = () => reject(new Error("Çalma hatası"));
       audio.play().catch(reject);
     });
+
+    // Paragraf sonu nefesi — bir sonraki paragrafa geçmeden sakin bir duraklama
+    if (!stopped && !paused) await sleep(PARAGRAPH_BREATH_MS);
   }
 
   // ── Paragrafları sırayla oynat ──────────────────────────────────────────────

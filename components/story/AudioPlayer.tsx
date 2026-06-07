@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createSpeechController, isSpeechSupported } from "@/lib/speech";
+import { createBackgroundMusic } from "@/lib/backgroundMusic";
 import { splitIntoSentences } from "@/lib/utils";
 import type { SpeechController } from "@/lib/speech";
+import type { BackgroundMusicController } from "@/lib/backgroundMusic";
 
 type AudioState = "idle" | "loading" | "playing" | "paused";
 
@@ -16,7 +18,9 @@ export default function AudioPlayer({ text, onSentenceChange }: AudioPlayerProps
   const [audioState, setAudioState] = useState<AudioState>("idle");
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [supported, setSupported] = useState<boolean>(true);
+  const [musicEnabled, setMusicEnabled] = useState<boolean>(true);
   const controllerRef = useRef<SpeechController | null>(null);
+  const musicRef = useRef<BackgroundMusicController | null>(null);
 
   // Total sentence count – computed once from the text prop
   const totalSentences = splitIntoSentences(text).length;
@@ -24,6 +28,14 @@ export default function AudioPlayer({ text, onSentenceChange }: AudioPlayerProps
   // Check speech support only on the client
   useEffect(() => {
     setSupported(isSpeechSupported());
+  }, []);
+
+  // Create the background-music controller once on the client
+  useEffect(() => {
+    musicRef.current = createBackgroundMusic();
+    return () => {
+      musicRef.current?.stop();
+    };
   }, []);
 
   // Cleanup on unmount: stop any ongoing speech
@@ -68,24 +80,41 @@ export default function AudioPlayer({ text, onSentenceChange }: AudioPlayerProps
   function handlePlay() {
     const controller = getOrCreateController();
     controller.play();
+    if (musicEnabled) musicRef.current?.play();
     setAudioState("loading"); // ilk ses yüklenene kadar
   }
 
   function handlePause() {
     controllerRef.current?.pause();
+    musicRef.current?.pause();
     setAudioState("paused");
   }
 
   function handleResume() {
     controllerRef.current?.resume();
+    if (musicEnabled) musicRef.current?.resume();
     setAudioState("playing");
   }
 
   function handleStop() {
     controllerRef.current?.stop();
+    musicRef.current?.stop();
     setAudioState("idle");
     setCurrentIndex(-1);
     onSentenceChange(-1);
+  }
+
+  // Müzik aç/kapa — okuma sürerken anında etki eder
+  function toggleMusic() {
+    setMusicEnabled((on) => {
+      const next = !on;
+      if (!next) {
+        musicRef.current?.stop();
+      } else if (audioState === "playing" || audioState === "loading") {
+        musicRef.current?.play();
+      }
+      return next;
+    });
   }
 
   // Progress: percentage of sentences completed (0–100)
@@ -109,10 +138,27 @@ export default function AudioPlayer({ text, onSentenceChange }: AudioPlayerProps
     <div className="rounded-2xl border border-purple-800/40 bg-gradient-to-br from-[#231545] to-[#0F0A1E] p-5 shadow-lg">
       {/* Header row */}
       <div className="mb-4 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-purple-300">
-          <span aria-hidden="true">🔊</span>
-          Türkçe
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-purple-300">
+            <span aria-hidden="true">🔊</span>
+            Türkçe
+          </span>
+
+          <button
+            type="button"
+            onClick={toggleMusic}
+            aria-pressed={musicEnabled}
+            title={musicEnabled ? "Uyku müziğini kapat" : "Uyku müziğini aç"}
+            className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+              musicEnabled
+                ? "border-[#F59E0B]/50 bg-[#F59E0B]/15 text-[#FCD34D]"
+                : "border-purple-800/50 bg-purple-950/40 text-purple-400"
+            }`}
+          >
+            <span aria-hidden="true">{musicEnabled ? "🎵" : "🔇"}</span>
+            Uyku müziği
+          </button>
+        </div>
 
         {audioState !== "idle" && (
           <span className="text-xs text-purple-400">

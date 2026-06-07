@@ -6,7 +6,9 @@ RUN apk add --no-cache openssl openssl-dev
 # ── deps ─────────────────────────────────────────────
 FROM base AS deps
 COPY package*.json ./
-RUN npm ci
+# --ignore-scripts: postinstall (prisma generate) bu aşamada schema'sız çalışır;
+# prisma generate zaten builder aşamasında (aşağıda) yapılıyor.
+RUN npm ci --ignore-scripts
 
 # ── builder ──────────────────────────────────────────
 FROM base AS builder

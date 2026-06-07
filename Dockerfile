@@ -12,6 +12,8 @@ RUN npm ci --ignore-scripts
 
 # ── builder ──────────────────────────────────────────
 FROM base AS builder
+# next.config.ts bunu görünce output:"standalone" üretir (Vercel'de kapalı kalır)
+ENV DOCKER_BUILD=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate

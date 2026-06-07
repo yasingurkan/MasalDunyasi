@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Docker (Dockerfile runner aşaması) .next/standalone bekler.
-  output: "standalone",
+  // Docker build'i .next/standalone üretsin diye yalnızca Docker'da açılır
+  // (Dockerfile builder aşamasında ENV DOCKER_BUILD=1). Vercel'de undefined kalır.
+  output: process.env.DOCKER_BUILD ? "standalone" : undefined,
   images: {
     remotePatterns: [
       {

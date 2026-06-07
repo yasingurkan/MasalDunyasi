@@ -20,7 +20,7 @@ export interface BackgroundMusicController {
   setVolume: (v: number) => void;
 }
 
-const DEFAULT_VOLUME = 0.16; // arka planda kısık — okumanın önüne geçmesin
+const DEFAULT_VOLUME = 0.3; // fon — duyulur ama okumanın önüne geçmez
 const FADE_S = 1.4;
 
 // Do majör pentatonik, müzik kutusu oktavlarında (Hz). Çıngırak notaları buradan seçilir.

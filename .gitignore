@@ -46,3 +46,5 @@ next-env.d.ts
 .rewrite-progress.json
 .rewrite-progress-*.json
 rewrite-*.log
+
+.vercel

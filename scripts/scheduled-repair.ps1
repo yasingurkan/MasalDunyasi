@@ -31,4 +31,9 @@ $env:DATABASE_URL = ((Get-Content .env | Where-Object { $_ -match "^DATABASE_URL
 $env:ONLY_PROBLEMATIC = "1"
 npx ts-node --project tsconfig.seed.json scripts/rewrite-all-stories.ts 2>&1 | Out-File $log -Append -Encoding utf8
 
-"=== Onarim bitti: $(Get-Date -Format s) ===" | Out-File $log -Append -Encoding utf8
+# 4) Duzeltilen masallari production (Neon/Vercel) DB'ye senkronla
+"--- Prod senkronu basliyor ---" | Out-File $log -Append -Encoding utf8
+Remove-Item Env:ONLY_PROBLEMATIC -ErrorAction SilentlyContinue
+npx ts-node --project tsconfig.seed.json scripts/sync-stories-prod.ts 2>&1 | Out-File $log -Append -Encoding utf8
+
+"=== Onarim + senkron bitti: $(Get-Date -Format s) ===" | Out-File $log -Append -Encoding utf8

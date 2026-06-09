@@ -19,7 +19,8 @@
     "stories:fix-lang": "ts-node --project tsconfig.seed.json scripts/fix-foreign-lang.ts",
     "stories:replace-foreign": "ts-node --project tsconfig.seed.json scripts/replace-foreign-words.ts",
     "stories:rewrite": "ts-node --project tsconfig.seed.json scripts/rewrite-all-stories.ts",
-    "stories:audit": "ts-node --project tsconfig.seed.json scripts/audit-stories.ts"
+    "stories:audit": "ts-node --project tsconfig.seed.json scripts/audit-stories.ts",
+    "stories:sync": "ts-node --project tsconfig.seed.json scripts/sync-stories-prod.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

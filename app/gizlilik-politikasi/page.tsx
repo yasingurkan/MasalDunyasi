@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Gizlilik Politikası | Masal Dünyası",
+  title: "Gizlilik Politikası",
   description:
     "Masal Dünyası gizlilik politikası: Verilerinizi nasıl topladığımız, kullandığımız ve koruduğumuz hakkında bilgi.",
 };

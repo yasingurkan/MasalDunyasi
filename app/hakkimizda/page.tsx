@@ -8,7 +8,7 @@ import Footer from "@/components/layout/Footer";
 import StarBackground from "@/components/layout/StarBackground";
 
 export const metadata: Metadata = {
-  title: "Hakkımızda | Masal Dünyası",
+  title: "Hakkımızda",
   description:
     "Masal Dünyası hakkında bilgi edinin. Türk çocukları için 1-12 yaş arası 1.200'den fazla Türkçe masal, ninni ve hikaye.",
   openGraph: {

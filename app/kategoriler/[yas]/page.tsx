@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const category = await getCategoryBySlug(yas);
 
   if (!category) {
-    return { title: "Kategori Bulunamadı | Masal Dünyası" };
+    return { title: "Kategori Bulunamadı" };
   }
 
   const storyCount = category._count?.stories ?? 0;
@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = `${category.ageMin}-${category.ageMax} yaş arası çocuklar için ${storyCount}+ Türkçe masal. ${category.description} Sesli okuma özelliği ile masalları dinleyin!`;
 
   return {
-    title: `${category.name} Masalları — ${storyCount}+ Türkçe Hikaye | Masal Dünyası`,
+    title: `${category.name} Masalları — ${storyCount}+ Türkçe Hikaye`,
     description,
     keywords: [
       `${category.ageMin} yaş masal`,

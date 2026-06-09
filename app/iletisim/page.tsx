@@ -9,7 +9,7 @@ import StarBackground from "@/components/layout/StarBackground";
 import ContactForm from "@/components/contact/ContactForm";
 
 export const metadata: Metadata = {
-  title: "İletişim | Masal Dünyası",
+  title: "İletişim",
   description:
     "Masal Dünyası ile iletişime geçin. Sorularınız, önerileriniz ve geri bildirimleriniz için bize ulaşın.",
   openGraph: {

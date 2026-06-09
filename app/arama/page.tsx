@@ -18,8 +18,8 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const query = q?.trim() ?? '';
   return {
     title: query
-      ? `"${query}" için Arama Sonuçları | Masal Dünyası`
-      : 'Masal Ara | Masal Dünyası',
+      ? `"${query}" için Arama Sonuçları`
+      : 'Masal Ara',
     description: query
       ? `"${query}" için Masal Dünyası'ndaki arama sonuçları.`
       : '1-12 yaş arası çocuklar için Türkçe masallarda arama yapın.',

@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://masaldunyasi.com").replace(/\/$/, "");
 
   return {
-    title: "Tüm Kategoriler — Yaş Gruplarına Göre Türkçe Masallar | Masal Dünyası",
+    title: "Tüm Kategoriler — Yaş Gruplarına Göre Türkçe Masallar",
     description: "1 yaştan 12 yaşa kadar tüm yaş gruplarına özel Türkçe masallar. Yaş kategorisine göre çocuğunuza uygun masalları keşfedin.",
     keywords: ["yaş kategorileri", "türkçe masal kategorileri", "çocuk masalları yaşa göre", "1 yaş masal", "12 yaş masal"],
     alternates: { canonical: `${siteUrl}/kategoriler` },

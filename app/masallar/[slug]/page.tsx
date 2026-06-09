@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const story = await getStoryBySlug(slug);
 
   if (!story) {
-    return { title: "Masal Bulunamadı | Masal Dünyası" };
+    return { title: "Masal Bulunamadı" };
   }
 
   const imageSlug = encodeURIComponent(story.imageQuery.replace(/\s+/g, "-"));
@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const enrichedDesc = `${story.excerpt} ${story.category?.name ? `${story.category.name} kategorisinde` : ""} ${story.ageMin}-${story.ageMax} yaş için Türkçe masal. Sesli dinleyin!`;
 
   return {
-    title: `${story.title} — Türkçe Masal | Masal Dünyası`,
+    title: `${story.title} — Türkçe Masal`,
     description: enrichedDesc.slice(0, 160),
     keywords: [
       "türkçe masal",

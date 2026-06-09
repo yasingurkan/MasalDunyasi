@@ -99,6 +99,8 @@ export default function StarBackground() {
 
   useEffect(() => {
     const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    // Client-only ilk okuma: SSR'da window yok, mount sonrası senkronize ediyoruz.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReducedMotion(mql.matches);
     const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
     mql.addEventListener('change', onChange);

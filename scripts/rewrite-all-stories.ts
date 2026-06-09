@@ -7,8 +7,13 @@
  *   npm run stories:rewrite                       # DB'deki TÜM masalları yeniden yazar
  *   SAMPLE=1 npm run stories:rewrite              # DB'ye DOKUNMADAN birkaç örnek üretip ekrana basar (kalite testi)
  *   ONLY_GENERATED=1 npm run stories:rewrite      # Sadece sourceType=generated olanları yazar
+ *   ONLY_PROBLEMATIC=1 npm run stories:rewrite    # SADECE bozuk masalları onarır (yabancı karakter/yarıda kesik/tekrar) — offset yok
+ *   FIX_IDS=12,34 npm run stories:rewrite         # Yalnız verilen ID'leri yeniden yazar
  *   START_OFFSET=200 npm run stories:rewrite      # Yarıda kalmışsa devam et
  *   GEMINI_MODEL=gemini-2.5-flash npm run stories:rewrite   # Farklı model
+ *
+ * Güvenlik: üretilen metin yarıda kalmış / yabancı karakterli / tekrarlı ise KAYDEDİLMEZ (mevcut içerik korunur).
+ * Bozuk masalları taramak için: npm run stories:audit
  */
 
 import { PrismaClient } from "@prisma/client";
@@ -68,6 +73,12 @@ const START_OFFSET = process.env.START_OFFSET != null
   : readProgress();
 const SAMPLE_MODE  = process.env.SAMPLE === "1";
 const ONLY_GEN     = process.env.ONLY_GENERATED === "1";
+// ONLY_PROBLEMATIC=1 → offset yok; SADECE bozuk masalları (yabancı karakter, yarıda kesik,
+// ardışık tekrar) tarar ve yeniden yazar. FIX_IDS=1,2,3 → yalnız verilen ID'leri yazar.
+const ONLY_PROBLEM = process.env.ONLY_PROBLEMATIC === "1";
+const FIX_IDS      = process.env.FIX_IDS
+  ? process.env.FIX_IDS.split(",").map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
+  : undefined;
 // LIMIT — bu turda en fazla kaç masal işlenecek (paralel kolları çakışmayan aralıklara bölmek için)
 const LIMIT        = process.env.LIMIT != null ? parseInt(process.env.LIMIT, 10) : undefined;
 
@@ -99,6 +110,32 @@ interface Src {
 function calcWordCount(t: string)      { return t.trim().split(/\s+/).length; }
 function calcReadingMinutes(t: string) { return Math.max(1, Math.ceil(calcWordCount(t) / 100)); }
 
+// ── Bozuk içerik tespiti (anlam bütünlüğü denetimi) ───────────────────────
+// Türkçe'de bulunmayan yazı blokları: Çince/Japonca/Kiril/Arapça/Tayca/Hangul…
+// NOT: â î û (inceltme) Türkçe'de GEÇERLİdir, bu listeye dahil edilmez. Vietnamca'ya
+// özgü Latin-ek harfler (ă đ ơ ư + ton işaretli sesliler) ayrıca eklenmiştir.
+const FOREIGN_RE = /[Ѐ-ӿ؀-ۿ฀-๿぀-ヿ㐀-鿿가-힯ăđơưĂĐƠƯạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/;
+function hasForeignChars(t: string): boolean { return FOREIGN_RE.test(t); }
+// Düzgün bir masal cümle bitiş işaretiyle biter; ortada kesilmişse yarıda kalmıştır.
+function isTruncated(t: string): boolean {
+  const last = t.trimEnd().slice(-1);
+  return !/[.!?»"'…)]/.test(last);
+}
+function hasDupSentence(t: string): boolean {
+  const s = t.split(/(?<=[.!?])\s+/).map(x => x.trim()).filter(Boolean);
+  for (let i = 1; i < s.length; i++) if (s[i].length > 15 && s[i] === s[i - 1]) return true;
+  return false;
+}
+// Yeni üretilen metni KAYDETMEDEN önce: gerçekten tam ve temiz mi?
+function isCleanAndComplete(t: string): boolean {
+  return !!t && t.trim().length > 0 && !hasForeignChars(t) && !isTruncated(t)
+    && calcWordCount(t) >= 60 && !hasDupSentence(t);
+}
+function isProblematic(content: string, title: string): boolean {
+  return hasForeignChars(content) || hasForeignChars(title)
+    || isTruncated(content) || hasDupSentence(content);
+}
+
 // Modelin sona eklediği [GÖRSEL] satırını metinden ayırır.
 // Marker yoksa eski davranış: tüm metin içerik, sahne null (imageQuery'ye dokunulmaz).
 function splitContentAndScene(raw: string): { content: string; scene: string | null } {
@@ -128,10 +165,11 @@ function getExcerpt(c: string): string {
 // Yaşa göre hedef uzunluk ve dil tonu
 function ageGuide(ageMin: number, ageMax: number): { length: string; tone: string; maxTokens: number } {
   const a = ageMax;
-  if (a <= 3)  return { length: "200-350 kelime", tone: "çok sade, kısa cümleler, bol tekrarsız ritim, sevecen ve yumuşak", maxTokens: 900 };
-  if (a <= 6)  return { length: "350-550 kelime", tone: "sade ama renkli, hayal gücünü besleyen, meraklı", maxTokens: 1300 };
-  if (a <= 9)  return { length: "550-800 kelime", tone: "akıcı, biraz daha gelişmiş kelime dağarcığı, küçük gerilim ve mizah", maxTokens: 1800 };
-  return            { length: "750-1000 kelime", tone: "zengin betimleme, katmanlı olay örgüsü, düşündüren", maxTokens: 2200 };
+  // Türkçe token-yoğundur (inceltme/ekler); maxToken'ları cömert tut ki masal yarıda kesilmesin.
+  if (a <= 3)  return { length: "200-350 kelime", tone: "çok sade, kısa cümleler, bol tekrarsız ritim, sevecen ve yumuşak", maxTokens: 1200 };
+  if (a <= 6)  return { length: "350-550 kelime", tone: "sade ama renkli, hayal gücünü besleyen, meraklı", maxTokens: 1800 };
+  if (a <= 9)  return { length: "550-800 kelime", tone: "akıcı, biraz daha gelişmiş kelime dağarcığı, küçük gerilim ve mizah", maxTokens: 2600 };
+  return            { length: "750-1000 kelime", tone: "zengin betimleme, katmanlı olay örgüsü, düşündüren", maxTokens: 3400 };
 }
 
 function buildPrompt(s: Src): { prompt: string; maxTokens: number } {
@@ -152,6 +190,7 @@ Bu yaş grubuna tam oturan, çocuğun severek dinleyeceği, akılda kalıcı bir
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 async function callGemini(userPrompt: string, maxTokens: number, retries = 4): Promise<string> {
+  let tokens = maxTokens;            // MAX_TOKENS truncation'ında büyütülür
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(geminiUrl(GEMINI_MODELS[geminiIdx]), {
@@ -163,7 +202,7 @@ async function callGemini(userPrompt: string, maxTokens: number, retries = 4): P
           generationConfig: {
             temperature: 0.9,
             topP: 0.95,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: tokens,
             // 2.5 modelleri "düşünme" modelidir; masal yazımında gereksiz, kapatıyoruz (hız + token tasarrufu)
             thinkingConfig: { thinkingBudget: 0 },
           },
@@ -192,9 +231,19 @@ async function callGemini(userPrompt: string, maxTokens: number, retries = 4): P
         throw new Error(`HTTP ${res.status}: ${err.slice(0, 100)}`);
       }
 
-      const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      const data = await res.json() as {
+        candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+      };
+      const cand = data.candidates?.[0];
+      const text = cand?.content?.parts?.[0]?.text?.trim();
       if (!text || text.length < 200) throw new Error("Çok kısa veya boş yanıt");
+      // Model token sınırına takılıp masalı yarıda kestiyse: bütçeyi büyüt ve baştan üret.
+      // Yarıda kalmış metni KAYDETME — anlam bütünlüğü bozulur.
+      if (cand?.finishReason === "MAX_TOKENS" && tokens < 8000) {
+        tokens = Math.min(8000, Math.round(tokens * 1.6));
+        console.log(`\n  ↑ Token sınırı (yarıda kaldı) → ${tokens} ile tekrar`);
+        continue;
+      }
       return text;
     } catch (err) {
       if (err instanceof DailyQuotaError) throw err;   // beklemeden hemen çık
@@ -299,19 +348,40 @@ async function runSample() {
 async function runDb() {
   const prisma = new PrismaClient();
   try {
-    const stories = await prisma.story.findMany({
-      where: ONLY_GEN ? { sourceType: "generated" } : undefined,
-      select: {
-        id: true, title: true, characters: true, source: true,
-        category: { select: { ageMin: true, ageMax: true } },
-      },
-      orderBy: { id: "asc" },
-      skip: START_OFFSET,
-      ...(LIMIT != null ? { take: LIMIT } : {}),
-    });
+    const selectFields = {
+      id: true, title: true, characters: true, source: true,
+      category: { select: { ageMin: true, ageMax: true } },
+    } as const;
 
-    console.log(`\n✍️  ${stories.length} masal yeniden yazılacak — model: ${MODEL}, offset: ${START_OFFSET}`);
-    console.log(`   Kapsam: ${ONLY_GEN ? "sadece generated" : "TÜM masallar"}`);
+    let stories: Array<{ id: number; title: string; characters: string[]; source: string;
+      category: { ageMin: number; ageMax: number } }>;
+    let mode: string;
+
+    if (FIX_IDS) {
+      // Yalnız verilen ID'ler
+      stories = await prisma.story.findMany({
+        where: { id: { in: FIX_IDS } }, select: selectFields, orderBy: { id: "asc" },
+      });
+      mode = `belirtilen ${FIX_IDS.length} ID`;
+    } else if (ONLY_PROBLEM) {
+      // Tüm masalları içerikle tara, sadece bozuk olanları seç (offset yok)
+      const all = await prisma.story.findMany({
+        select: { ...selectFields, content: true }, orderBy: { id: "asc" },
+      });
+      stories = all.filter(s => isProblematic(s.content, s.title))
+                   .map(({ content, ...rest }) => rest);  // eslint-disable-line @typescript-eslint/no-unused-vars
+      mode = `bozuk ${stories.length} masal (yabancı karakter/yarıda kesik/tekrar)`;
+    } else {
+      stories = await prisma.story.findMany({
+        where: ONLY_GEN ? { sourceType: "generated" } : undefined,
+        select: selectFields, orderBy: { id: "asc" },
+        skip: START_OFFSET, ...(LIMIT != null ? { take: LIMIT } : {}),
+      });
+      mode = ONLY_GEN ? "sadece generated" : "TÜM masallar";
+    }
+
+    console.log(`\n✍️  ${stories.length} masal yeniden yazılacak — model: ${MODEL}`);
+    console.log(`   Kapsam: ${mode}${FIX_IDS || ONLY_PROBLEM ? " — offset yok sayılır" : `, offset: ${START_OFFSET}`}`);
     console.log(`   Tahmini süre: ~${Math.ceil(stories.length * DELAY_MS / 60000)} dakika\n`);
 
     let done = 0, failed = 0;
@@ -328,6 +398,16 @@ async function runDb() {
       try {
         const raw = await generate(prompt, maxTokens + 60);   // +60: sondaki [GÖRSEL] satırına yer bırak
         const { content: newContent, scene } = splitContentAndScene(raw);
+        // Güvenlik: yeni metin yarıda kalmış / yabancı karakterli / tekrarlı ise KAYDETME.
+        // Mevcut (belki sorunlu ama) içeriği bozmaktansa bu masalı 'hata' say, sonra tekrar denenir.
+        if (!isCleanAndComplete(newContent)) {
+          throw new Error(
+            hasForeignChars(newContent) ? "üretilen metinde yabancı karakter"
+            : isTruncated(newContent)   ? "üretilen metin yarıda kaldı"
+            : hasDupSentence(newContent) ? "üretilen metinde tekrar cümle"
+            : "üretilen metin çok kısa"
+          );
+        }
         await prisma.story.update({
           where: { id: st.id },
           data: {
@@ -344,9 +424,11 @@ async function runDb() {
       } catch (err) {
         if (err instanceof DailyQuotaError) {
           const resumeAt = START_OFFSET + done + failed;
-          writeProgress(resumeAt);
+          // Hedefli onarım modunda ana ilerleme dosyasını EZME (offset sıralı moda ait).
+          if (!FIX_IDS && !ONLY_PROBLEM) writeProgress(resumeAt);
           console.log(`\n\n🛑 Tüm modellerin günlük ücretsiz kotası tükendi. Bu turda ${done} masal yazıldı.`);
-          console.log(`   İlerleme kaydedildi (offset: ${resumeAt}). Yarın 'npm run stories:rewrite' otomatik kaldığı yerden devam eder.`);
+          if (!FIX_IDS && !ONLY_PROBLEM)
+            console.log(`   İlerleme kaydedildi (offset: ${resumeAt}). Yarın 'npm run stories:rewrite' otomatik kaldığı yerden devam eder.`);
           if (failedIds.length > 0) console.log(`   Atlanan/hatalı ID'ler: ${failedIds.join(", ")}`);
           return;
         }
@@ -355,9 +437,10 @@ async function runDb() {
         console.error(`\n  ✗ [${st.id}] ${st.title}: ${err}`);
       }
 
-      writeProgress(START_OFFSET + done + failed);   // her masaldan sonra ilerlemeyi kaydet
-      const completed = START_OFFSET + done + failed;
-      const total     = stories.length + START_OFFSET;
+      // İlerleme dosyası yalnız sıralı (offset) modda anlamlı; hedefli onarımda yazma.
+      if (!FIX_IDS && !ONLY_PROBLEM) writeProgress(START_OFFSET + done + failed);
+      const completed = (FIX_IDS || ONLY_PROBLEM ? 0 : START_OFFSET) + done + failed;
+      const total     = stories.length + (FIX_IDS || ONLY_PROBLEM ? 0 : START_OFFSET);
       const pct       = Math.round((completed / total) * 100);
       process.stdout.write(`\r  ✓ ${done} yazıldı | ✗ ${failed} hata | %${pct} | kalan: ${stories.length - done - failed}   `);
 

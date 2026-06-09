@@ -86,7 +86,7 @@ async function main() {
   console.log(`\n🔍 ${problematic.length} masalda yabancı karakter bulundu.\n`);
 
   let fixed = 0;
-  let stillBad: number[] = [];
+  const stillBad: number[] = [];
 
   for (const story of problematic) {
     const newTitle = applyReplacements(story.title);

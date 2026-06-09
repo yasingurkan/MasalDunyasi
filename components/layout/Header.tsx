@@ -97,13 +97,16 @@ export default function Header({ categories }: HeaderProps) {
   }, []);
 
   // Close everything on route change
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    // Rota değişiminde tüm menüleri kapatmak kasıtlı; pathname değişimine tepki.
     setMobileOpen(false);
     setDropdownOpen(false);
     setMobileDropdownOpen(false);
     setMobileSearchOpen(false);
     setSearchQuery('');
   }, [pathname]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {

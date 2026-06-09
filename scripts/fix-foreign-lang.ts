@@ -186,24 +186,7 @@ Masal "Bir varmış bir yokmuş" ile başlasın. Mutlu sonla bitsin. En az ${min
 }
 
 async function main() {
-  // Yabancı karakter içeren masalları DB'den bul
-  const stories = await prisma.story.findMany({
-    where: {
-      OR: [
-        { content: { contains: "一" } },
-        { content: { contains: "天" } },
-        { content: { contains: "开" } },
-        { content: { contains: "ни" } },
-        { content: { contains: "معروف" } },
-        { content: { contains: "giữa" } },
-        { content: { contains: "thiếu" } },
-        { content: { contains: "existed" } },
-      ],
-    },
-    include: { category: { select: { ageMin: true, ageMax: true, name: true } } },
-  });
-
-  // Regex ile de tara (Prisma contains ile tüm unicode range'i tutturamayız)
+  // Regex ile tara (Prisma contains ile tüm unicode range'i tutturamayız)
   const allStories = await prisma.story.findMany({
     select: { id: true, content: true, title: true, categoryId: true, tags: true,
               characters: true, imageQuery: true, source: true, sourceType: true,

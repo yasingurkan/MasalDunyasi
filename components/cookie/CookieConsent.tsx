@@ -327,6 +327,8 @@ export default function CookieConsent() {
     // Only show banner when no valid consent exists in storage
     const stored = loadStoredConsent();
     if (!stored) {
+      // Client-only: storage'da onay yoksa mount sonrası banner'ı göster.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisible(true);
     }
   }, []);

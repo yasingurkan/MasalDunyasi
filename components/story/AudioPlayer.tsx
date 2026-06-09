@@ -27,6 +27,8 @@ export default function AudioPlayer({ text, onSentenceChange }: AudioPlayerProps
 
   // Check speech support only on the client
   useEffect(() => {
+    // Client-only kontrol: SSR'da desteklenir varsayar, mount sonrası düzeltir.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupported(isSpeechSupported());
   }, []);
 
@@ -50,6 +52,8 @@ export default function AudioPlayer({ text, onSentenceChange }: AudioPlayerProps
     // If speech was in progress, stop it cleanly before discarding the old controller
     if (audioState !== "idle") {
       controllerRef.current?.stop();
+      // text değişince çalmayı sıfırlamak kasıtlı; bu yalnızca prop değişiminde tetiklenir.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAudioState("idle");
       setCurrentIndex(-1);
     }
